@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Fttz game 🙂</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Arial Black', sans-serif; }
+        canvas { width: 100vw; height: 100vh; background: radial-gradient(circle, #1a2e05 0%, #000 100%); cursor: pointer; }
+        #ui { position: absolute; color: #32ff00; text-align: center; pointer-events: none; width: 100%; top: 40%; font-size: 2.5rem; text-shadow: 0 0 20px #32ff00; }
+        #score { position: absolute; top: 30px; color: #32ff00; font-size: 60px; pointer-events: none; text-shadow: 0 0 10px #32ff00; }
+    </style>
+</head>
+<body>
+    <div id="score">0</div>
+    <div id="ui">PRESS SPACE ORE CLICK ON SCREEN TO PLAY</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('ui');
+        const scoreEl = document.getElementById('score');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const GRAVITY = 0.28;
+        const JUMP = -7;
+        const PIPE_SPEED = 4.5;
+        const PIPE_GAP = 220; 
+        const PIPE_WIDTH = 90;
+        
+        let bird = { x: 150, y: 300, radius: 25, velocity: 0 };
+        let pipes = [];
+        let score = 0;
+        let gameState = 'START';
+
+        function reset() {
+            bird = { x: 150, y: 300, radius: 25, velocity: 0 };
+            pipes = [];
+            score = 0;
+            scoreEl.innerText = score;
+            gameState = 'PLAYING';
+            ui.style.display = 'none';
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pipes.forEach(p => {
+                ctx.fillStyle = "#111";
+                ctx.strokeStyle = "#32ff00";
+                ctx.lineWidth = 3;
+                ctx.fillRect(p.x, 0, PIPE_WIDTH, p.top);
+                ctx.strokeRect(p.x, 0, PIPE_WIDTH, p.top);
+                ctx.fillRect(p.x, p.top + PIPE_GAP, PIPE_WIDTH, canvas.height);
+                ctx.strokeRect(p.x, p.top + PIPE_GAP, PIPE_WIDTH, canvas.height);
+            });
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = "#32ff00";
+            ctx.fillStyle = "#32ff00";
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+            bird.velocity += GRAVITY;
+            bird.y += bird.velocity;
+            if (pipes.length === 0 || pipes[pipes.length-1].x < canvas.width - 450) {
+                let topH = Math.random() * (canvas.height - PIPE_GAP - 200) + 100;
+                pipes.push({ x: canvas.width, top: topH, passed: false });
+            }
+            pipes.forEach((p, i) => {
+                p.x -= PIPE_SPEED;
+                if (bird.x + bird.radius > p.x && bird.x - bird.radius < p.x + PIPE_WIDTH) {
+                    if (bird.y - bird.radius < p.top || bird.y + bird.radius > p.top + PIPE_GAP) endGame();
+                }
+                if (!p.passed && p.x + PIPE_WIDTH < bird.x) {
+                    score++;
+                    scoreEl.innerText = score;
+                    p.passed = true;
+                }
+                if (p.x + PIPE_WIDTH < 0) pipes.splice(i, 1);
+            });
+            if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) endGame();
+        }
+
+        function endGame() {
+            gameState = 'OVER';
+            ui.innerHTML = "GAME OVER<br><span style='font-size: 1.5rem'>SPACE TO RESTART</span>";
+            ui.style.display = 'block';
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        
+        // Input Logic
+        const handleInput = (e) => {
+            // Check if it's a click OR the Space key
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'touchstart') e.preventDefault();
+            
+            if (gameState === 'PLAYING') {
+                bird.velocity = JUMP;
+            } else {
+                reset();
+            }
+        };
+
+        window.addEventListener('mousedown', handleInput);
+        window.addEventListener('touchstart', handleInput, { passive: false });
+        window.addEventListener('keydown', handleInput); // Added Spacebar listener
+        loop();
+    </script>
+</body>
+</html>
